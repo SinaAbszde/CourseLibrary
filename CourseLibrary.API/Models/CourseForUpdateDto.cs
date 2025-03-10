@@ -1,8 +1,13 @@
-﻿namespace CourseLibrary.API.Models;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class CourseForUpdateDto
+namespace CourseLibrary.API.Models;
+
+public class CourseForUpdateDto : CourseForManipulationDto
 {
-    public string Title { get; set; } = string.Empty;
-
-    public string Description { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Description is required")]
+    public override string Description
+    {
+        get => base.Description;
+        set => base.Description = value;
+    }
 }
