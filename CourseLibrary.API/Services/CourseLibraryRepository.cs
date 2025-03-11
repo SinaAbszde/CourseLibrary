@@ -119,11 +119,34 @@ public class CourseLibraryRepository : ICourseLibraryRepository
         return await _context.Authors.FirstOrDefaultAsync(a => a.Id == authorId);
 #pragma warning restore CS8603 // Possible null reference return.
     }
-
    
     public async Task<IEnumerable<Author>> GetAuthorsAsync()
     {
         return await _context.Authors.ToListAsync();
+    }
+   
+    public async Task<IEnumerable<Author>> GetAuthorsAsync(string? mainCategory, string? searchQuery)
+    {
+        if (string.IsNullOrWhiteSpace(mainCategory) && string.IsNullOrWhiteSpace(searchQuery))
+        {
+            return await GetAuthorsAsync();
+        }
+        
+        IQueryable<Author> collection = _context.Authors;
+        if (!string.IsNullOrWhiteSpace(mainCategory))
+        {
+            mainCategory = mainCategory.Trim();
+            collection = collection.Where(a => a.MainCategory == mainCategory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            searchQuery = searchQuery.Trim();
+            collection = collection.Where(a =>
+                a.MainCategory.Contains(searchQuery) || a.FirstName.Contains(searchQuery) ||
+                a.LastName.Contains(searchQuery));
+        }
+        return await collection.ToListAsync();
     }
 
     public async Task<IEnumerable<Author>> GetAuthorsAsync(IEnumerable<Guid> authorIds)
