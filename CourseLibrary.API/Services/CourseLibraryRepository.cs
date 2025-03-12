@@ -1,5 +1,6 @@
 ﻿using CourseLibrary.API.DbContexts;
 using CourseLibrary.API.Entities;
+using CourseLibrary.API.Helpers;
 using CourseLibrary.API.ResourceParameters;
 using Microsoft.EntityFrameworkCore;
 
@@ -126,17 +127,11 @@ public class CourseLibraryRepository : ICourseLibraryRepository
         return await _context.Authors.ToListAsync();
     }
    
-    public async Task<IEnumerable<Author>> GetAuthorsAsync(AuthorsResourceParameters authorsResourceParameters)
+    public async Task<PagedList<Author>> GetAuthorsAsync(AuthorsResourceParameters authorsResourceParameters)
     {
         if (authorsResourceParameters is null)
         {
             throw new ArgumentNullException(nameof(authorsResourceParameters));
-        }
-
-        if (string.IsNullOrWhiteSpace(authorsResourceParameters.MainCategory) &&
-            string.IsNullOrWhiteSpace(authorsResourceParameters.SearchQuery))
-        {
-            return await GetAuthorsAsync();
         }
         
         IQueryable<Author> collection = _context.Authors;
@@ -153,7 +148,11 @@ public class CourseLibraryRepository : ICourseLibraryRepository
                 a.MainCategory.Contains(searchQuery) || a.FirstName.Contains(searchQuery) ||
                 a.LastName.Contains(searchQuery));
         }
-        return await collection.ToListAsync();
+
+        return await PagedList<Author>.CreateAsync(
+            collection,
+            authorsResourceParameters.PageNumber,
+            authorsResourceParameters.PageSize);
     }
 
     public async Task<IEnumerable<Author>> GetAuthorsAsync(IEnumerable<Guid> authorIds)
