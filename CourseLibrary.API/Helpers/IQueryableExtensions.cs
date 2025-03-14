@@ -34,10 +34,10 @@ public static class IQueryableExtensions
             
             var descendingOrder = trimmedOrderByClause.EndsWith(" desc");
             
-            var indexofFirstSpace = trimmedOrderByClause.IndexOf(' ');
-            var propertyName = indexofFirstSpace == -1
+            var indexOfFirstSpace = trimmedOrderByClause.IndexOf(' ');
+            var propertyName = indexOfFirstSpace == -1
                 ? trimmedOrderByClause
-                : trimmedOrderByClause[..indexofFirstSpace];
+                : trimmedOrderByClause[..indexOfFirstSpace];
 
             if (!mappingDictionary.TryGetValue(propertyName, out var propertyMappingValue))
             {
