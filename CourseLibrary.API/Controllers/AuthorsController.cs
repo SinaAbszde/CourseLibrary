@@ -66,6 +66,7 @@ public class AuthorsController : ControllerBase
             ResourceUriType.PreviousPage => Url.Link(nameof(GetAuthors),
                 new
                 {
+                    orderBy = authorsResourceParameters.OrderBy,
                     pageNumber = authorsResourceParameters.PageNumber - 1,
                     pageSize = authorsResourceParameters.PageSize,
                     maincategory = authorsResourceParameters.MainCategory,
@@ -74,6 +75,7 @@ public class AuthorsController : ControllerBase
             ResourceUriType.NextPage => Url.Link(nameof(GetAuthors),
                 new
                 {
+                    orderBy = authorsResourceParameters.OrderBy,
                     pageNumber = authorsResourceParameters.PageNumber + 1,
                     pageSize = authorsResourceParameters.PageSize,
                     maincategory = authorsResourceParameters.MainCategory,
@@ -82,6 +84,7 @@ public class AuthorsController : ControllerBase
             _ => Url.Link(nameof(GetAuthors),
                 new
                 {
+                    orderBy = authorsResourceParameters.OrderBy,
                     pageNumber = authorsResourceParameters.PageNumber,
                     pageSize = authorsResourceParameters.PageSize,
                     maincategory = authorsResourceParameters.MainCategory,
