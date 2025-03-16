@@ -6,6 +6,7 @@ using CourseLibrary.API.Models;
 using CourseLibrary.API.ResourceParameters;
 using CourseLibrary.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace CourseLibrary.API.Controllers;
 
@@ -58,29 +59,63 @@ public class AuthorsController : ControllerBase
         var authorsFromRepo = await _courseLibraryRepository
             .GetAuthorsAsync(authorsResourceParameters);
 
-        var previousPageLink = authorsFromRepo.HasPreviousPage
-            ? CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.PreviousPage)
-            : null;
-
-        var nextPageLink = authorsFromRepo.HasNextPage
-            ? CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.NextPage)
-            : null;
-
         var paginationMetaData = new
         {
             totalCount = authorsFromRepo.TotalCount,
             pageSize = authorsFromRepo.PageSize,
             currentPage = authorsFromRepo.CurrentPage,
-            totalPages = authorsFromRepo.TotalPages,
-            previousPageLink,
-            nextPageLink
+            totalPages = authorsFromRepo.TotalPages
+        };
+
+        var links = CreateLinksForAuthors(
+            authorsResourceParameters,
+            authorsFromRepo.HasNextPage,
+            authorsFromRepo.HasPreviousPage);
+
+        var shapedAuthors = _mapper.Map<IEnumerable<AuthorDto>>(authorsFromRepo)
+            .ShapeData(authorsResourceParameters.Fields);
+
+        var shapedAuthorsWithLinks = shapedAuthors.Select(author =>
+        {
+            IDictionary<string, object?> authorAsDictionary = author;
+            var authorLinks = CreateLinksForAuthor((Guid)authorAsDictionary["Id"]!, null);
+            authorAsDictionary.Add("links", authorLinks);
+            return authorAsDictionary;
+        });
+
+        var linkedCollectionResource = new
+        {
+            value = shapedAuthorsWithLinks,
+            links
         };
 
         Response.Headers.Add("X-Pagination",
             JsonSerializer.Serialize(paginationMetaData));
         
         // return them
-        return Ok(_mapper.Map<IEnumerable<AuthorDto>>(authorsFromRepo).ShapeData(authorsResourceParameters.Fields));
+        return Ok(linkedCollectionResource);
+    }
+
+    private IEnumerable<LinkDto> CreateLinksForAuthors(AuthorsResourceParameters authorsResourceParameters,
+        bool hasNextPage, bool hasPreviousPage)
+    {
+        List<LinkDto> links = new()
+        {
+            new LinkDto(
+                CreateAuthorsResourceUri(
+                    authorsResourceParameters,
+                    ResourceUriType.CurrentPage),
+                "self",
+                "GET")
+        };
+        if (hasNextPage)
+            links.Add(new LinkDto(CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.NextPage),
+                "nextPage", "GET"));
+        if (hasPreviousPage)
+            links.Add(new LinkDto(CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.PreviousPage),
+                "previousPage", "GET"));
+        
+        return links;
     }
 
     private string? CreateAuthorsResourceUri(AuthorsResourceParameters authorsResourceParameters, ResourceUriType type)
@@ -103,6 +138,16 @@ public class AuthorsController : ControllerBase
                     fields = authorsResourceParameters.Fields,
                     orderBy = authorsResourceParameters.OrderBy,
                     pageNumber = authorsResourceParameters.PageNumber + 1,
+                    pageSize = authorsResourceParameters.PageSize,
+                    maincategory = authorsResourceParameters.MainCategory,
+                    searchQuery = authorsResourceParameters.SearchQuery
+                }),
+            ResourceUriType.CurrentPage => Url.Link(nameof(GetAuthors),
+                new
+                {
+                    fields = authorsResourceParameters.Fields,
+                    orderBy = authorsResourceParameters.OrderBy,
+                    pageNumber = authorsResourceParameters.PageNumber,
                     pageSize = authorsResourceParameters.PageSize,
                     maincategory = authorsResourceParameters.MainCategory,
                     searchQuery = authorsResourceParameters.SearchQuery
@@ -140,24 +185,51 @@ public class AuthorsController : ControllerBase
         {
             return NotFound();
         }
+        
+        var links = CreateLinksForAuthor(authorId, fields);
+
+        IDictionary<string, object?> linkedResourceToReturn =
+            _mapper.Map<AuthorDto>(authorFromRepo).ShapeData(fields);
+
+        linkedResourceToReturn.Add("links", links);
 
         // return author
-        return Ok(_mapper.Map<AuthorDto>(authorFromRepo).ShapeData(fields));
+        return Ok(linkedResourceToReturn);
     }
 
-    [HttpPost]
+    private IEnumerable<LinkDto> CreateLinksForAuthor(Guid authorId, string? fields)
+    {
+        List<LinkDto> links = new()
+        {
+            string.IsNullOrWhiteSpace(fields)
+                ? new LinkDto(Url.Link("GetAuthor", new { authorId }), "self", "GET")
+                : new LinkDto(Url.Link("GetAuthor", new { authorId, fields }), "self", "GET"),
+            new LinkDto(Url.Link("CreateCourseForAuthor", new { authorId }), "create_course_for_author", "POST"),
+            new LinkDto(Url.Link("GetCoursesForAuthor", new { authorId }), "courses", "GET")
+        };
+
+        return links;
+    }
+
+    [HttpPost(Name = "CreateAuthor")]
     public async Task<ActionResult<AuthorDto>> CreateAuthor(AuthorForCreationDto author)
     {
-        var authorEntity = _mapper.Map<Entities.Author>(author);
+        var authorEntity = _mapper.Map<Author>(author);
 
         _courseLibraryRepository.AddAuthor(authorEntity);
         await _courseLibraryRepository.SaveAsync();
 
         var authorToReturn = _mapper.Map<AuthorDto>(authorEntity);
 
+        var links = CreateLinksForAuthor(authorToReturn.Id, null);
+
+        IDictionary<string, object?> linkedResourceToReturn = authorToReturn.ShapeData(null);
+        
+        linkedResourceToReturn.Add("links", links);
+        
         return CreatedAtRoute("GetAuthor",
-            new { authorId = authorToReturn.Id },
-            authorToReturn);
+            new { authorId = linkedResourceToReturn["Id"] },
+            linkedResourceToReturn);
     }
 
     [HttpOptions]
