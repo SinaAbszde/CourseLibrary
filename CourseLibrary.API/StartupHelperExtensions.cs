@@ -17,6 +17,7 @@ internal static class StartupHelperExtensions
         builder.Services.AddControllers(configure =>
         {
             configure.ReturnHttpNotAcceptable = true;
+            configure.CacheProfiles.Add("240SecondsCacheProfile", new CacheProfile { Duration = 240 });
         })
         .AddNewtonsoftJson(setupAction =>
         {
@@ -53,12 +54,6 @@ internal static class StartupHelperExtensions
             var newtonsoftJsonOutputFormatter =
                 config.OutputFormatters.OfType<NewtonsoftJsonOutputFormatter>().FirstOrDefault();
             newtonsoftJsonOutputFormatter?.SupportedMediaTypes.Add("application/vnd.marvin.hateoas+json");
-            
-            // var newtonsoftJsonInputFormatter =
-            //     config.InputFormatters.OfType<NewtonsoftJsonInputFormatter>().FirstOrDefault();
-            // newtonsoftJsonInputFormatter?.SupportedMediaTypes.Add("application/vnd.marvin.authorforcreation+json");
-            // newtonsoftJsonInputFormatter?.SupportedMediaTypes.Add(
-            //     "application/vnd.marvin.authorforcreationwithdateofdeath+json");
         });
 
         builder.Services.AddTransient<IPropertyMappingService, PropertyMappingService>();
@@ -75,10 +70,12 @@ internal static class StartupHelperExtensions
         builder.Services.AddAutoMapper(
             AppDomain.CurrentDomain.GetAssemblies());
 
+        builder.Services.AddResponseCaching();
+
         return builder.Build();
     }
 
-    // Configure the request/response pipelien
+    // Configure the request/response pipeline
     public static WebApplication ConfigurePipeline(this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
@@ -97,6 +94,8 @@ internal static class StartupHelperExtensions
                 });
             });
         }
+
+        app.UseResponseCaching();
  
         app.UseAuthorization();
 
