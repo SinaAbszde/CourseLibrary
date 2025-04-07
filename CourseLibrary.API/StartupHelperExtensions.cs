@@ -1,5 +1,6 @@
 ﻿using CourseLibrary.API.DbContexts;
 using CourseLibrary.API.Services;
+using Marvin.Cache.Headers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -72,6 +73,14 @@ internal static class StartupHelperExtensions
 
         builder.Services.AddResponseCaching();
 
+        builder.Services.AddHttpCacheHeaders(
+            expirationModelOptions =>
+            {
+                expirationModelOptions.MaxAge = 60;
+                expirationModelOptions.CacheLocation = CacheLocation.Private;
+            },
+            validationModelOptions => { validationModelOptions.MustRevalidate = true; });
+        
         return builder.Build();
     }
 
@@ -95,8 +104,10 @@ internal static class StartupHelperExtensions
             });
         }
 
-        app.UseResponseCaching();
- 
+        // app.UseResponseCaching();
+
+        app.UseHttpCacheHeaders();
+        
         app.UseAuthorization();
 
         app.MapControllers(); 
